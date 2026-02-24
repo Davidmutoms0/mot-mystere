@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LEXIS - Devine le Mot</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+font-family: Arial, sans-serif;
+background: #f0f0f0;
+color: #222;
+min-height: 100vh;
+}
+
+/* TOPBAR */
+#topbar {
+background: #4a0080;
+color: white;
+padding: 12px 16px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+#topbar .brand { font-size: 20px; font-weight: bold; }
+#back-btn {
+background: rgba(255,255,255,0.2);
+border: 1px solid white;
+color: white;
+padding: 6px 12px;
+cursor: pointer;
+border-radius: 4px;
+display: none;
+}
+#back-btn.vis { display: block; }
+
+/* LOADER */
+#loader {
+position: fixed;
+inset: 0;
+background: #f0f0f0;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 999;
+gap: 14px;
+}
+#loader.out { display: none; }
+.dots { display: flex; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #4a0080; animation: bounce 0.8s infinite alternate; }
+.dot:nth-child(2) { animation-delay: 0.2s; background: #c0006a; }
+.dot:nth-child(3) { animation-delay: 0.4s; background: #e06000; }
+@keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+
+/* SCREENS */
+.sc { display: none; max-width: 460px; margin: 0 auto; padding: 16px; }
+.sc.on { display: block; }
+
+/* BOX */
+.box {
+background: white;
+border: 1px solid #ccc;
+border-radius: 6px;
+padding: 14px;
+margin-bottom: 12px;
+}
+
+/* FORM */
+input, select {
+width: 100%;
+padding: 10px 12px;
+border: 1px solid #bbb;
+border-radius: 4px;
+font-size: 15px;
+margin-top: 6px;
+font-family: Arial, sans-serif;
+}
+input:focus, select:focus { outline: none; border-color: #4a0080; }
+label { font-size: 12px; font-weight: bold; color: #666; display: block; margin-top: 12px; }
+label:first-child { margin-top: 0; }
+
+/* BUTTONS */
+.btn {
+display: block;
+width: 100%;
+padding: 12px;
+border: none;
+border-radius: 4px;
+font-size: 15px;
+font-weight: bold;
+cursor: pointer;
+margin-top: 10px;
+font-family: Arial, sans-serif;
+}
+.btn-primary { background: #4a0080; color: white; }
+.btn-primary:hover { background: #36005c; }
+.btn-secondary { background: #e0e0e0; color: #333; }
+.btn-secondary:hover { background: #ccc; }
+.btn-green { background: #19a349; color: white; }
+.btn-green:hover { background: #147a38; }
+
+/* DIFF */
+.diff-row { display: flex; gap: 8px; margin-top: 6px; }
+.diff-pill { flex: 1; padding: 10px 4px; border: 2px solid #ccc; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; background: #f5f5f5; }
+.diff-pill.sel { border-color: #4a0080; background: #f0e6ff; font-weight: bold; }
+
+/* STATS */
+.stats-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.stat-box { flex: 1; background: white; border: 1px solid #ccc; border-radius: 6px; padding: 10px; text-align: center; }
+.stat-n { font-size: 22px; font-weight: bold; color: #4a0080; }
+.stat-l { font-size: 11px; color: #888; text-transform: uppercase; }
+
+/* CODE */
+.code-display { text-align: center; background: #f5f5f5; border: 2px dashed #4a0080; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+.code-val { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #4a0080; }
+.code-copy { font-size: 12px; color: #888; cursor: pointer; margin-top: 4px; }
+.code-copy:hover { color: #4a0080; }
+
+/* PLAYERS */
+.players-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.p-card { flex: 1; background: white; border: 2px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; }
+.p-card.me { border-color: #4a0080; }
+.p-card.ready { border-color: #19a349; }
+.p-av { font-size: 28px; margin-bottom: 6px; }
+.p-name { font-weight: bold; font-size: 14px; }
+.p-status { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* GAME HEADER */
+.game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.timer-box { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 8px 14px; text-align: center; }
+.timer-val { font-size: 22px; font-weight: bold; color: #4a0080; }
+.timer-lbl { font-size: 10px; color: #888; text-transform: uppercase; }
+.round-info { flex: 1; padding: 0 10px; }
+.round-num { font-size: 16px; font-weight: bold; }
+.round-sub { font-size: 12px; color: #888; }
+.score-badge { background: #f0fff4; border: 1px solid #19a349; color: #19a349; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+
+/* PROGRESS BAR */
+.prog-bar { height: 4px; background: #e0e0e0; border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+.prog-fill { height: 100%; background: #4a0080; border-radius: 2px; transition: width 0.5s; }
+
+/* NEXT WORD BANNER */
+.next-banner { display: none; background: #f0fff4; border: 2px solid #19a349; border-radius: 6px; padding: 14px; text-align: center; margin-bottom: 12px; }
+.next-banner.on { display: block; }
+.nb-word { font-size: 22px; font-weight: bold; color: #4a0080; letter-spacing: 4px; display: block; margin: 6px 0; }
+.nb-counter { font-size: 24px; font-weight: bold; color: #19a349; }
+
+/* GOD PEEK */
+.god-peek { display: none; background: #f0e6ff; border: 2px dashed #4a0080; border-radius: 4px; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 4px; color: #4a0080; margin-bottom: 10px; }
+.god-peek.on { display: block; }
+
+/* WORD BLANKS */
+.blanks { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 14px 0 8px; }
+.blank { width: 34px; height: 42px; border-bottom: 2px solid #aaa; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px; font-size: 20px; font-weight: bold; color: #c0006a; }
+.blank.sp { width: 12px; border: none; }
+.word-info { text-align: center; font-size: 12px; color: #888; }
+
+/* HINTS */
+.hint-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid #eee; border-radius: 4px; background: #fafafa; margin-bottom: 6px; }
+.hint-icon { width: 30px; height: 30px; background: #4a0080; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; color: white; }
+.hint-lbl { font-size: 10px; font-weight: bold; color: #888; text-transform: uppercase; }
+.hint-txt { font-size: 14px; margin-top: 2px; }
+.no-hint { text-align: center; color: #aaa; font-size: 13px; padding: 14px; }
+
+/* HINT BAR */
+.hbar-wrap { display: flex; gap: 8px; align-items: center; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; margin-bottom: 10px; }
+.hbar-track { flex: 1; height: 4px; background: #ddd; border-radius: 4px; overflow: hidden; }
+.hbar-fill { height: 100%; background: #4a0080; border-radius: 4px; transition: width 0.5s linear; }
+.hbar-lbl { font-size: 11px; color: #888; white-space: nowrap; }
+
+/* GUESS FEED */
+.guess-feed { max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
+.g-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; background: white; margin-bottom: 4px; font-size: 13px; }
+.g-item.win { border-color: #19a349; background: #f0fff4; }
+.g-item.close { border-color: #e06000; background: #fff8f0; }
+.g-word { font-weight: bold; font-size: 14px; letter-spacing: 1px; }
+
+/* GUESS INPUT */
+.guess-row { display: flex; gap: 8px; }
+.guess-row input { flex: 1; font-size: 20px; font-weight: bold; text-align: center; letter-spacing: 3px; text-transform: uppercase; margin-top: 0; }
+.guess-send { width: 50px; height: 46px; background: #4a0080; color: white; border: none; border-radius: 4px; font-size: 20px; cursor: pointer; flex-shrink: 0; }
+.guess-send:hover { background: #36005c; }
+
+/* SEC TITLE */
+.sec-title { font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between; }
+
+/* WAIT DOTS */
+.wait-dots { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.wdot { width: 8px; height: 8px; border-radius: 50%; background: #4a0080; animation: bounce 0.8s infinite alternate; }
+.wdot:nth-child(2) { animation-delay: 0.2s; }
+.wdot:nth-child(3) { animation-delay: 0.4s; }
+
+/* TOAST */
+#toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; pointer-events: none; z-index: 9999; transition: transform 0.3s; white-space: nowrap; }
+#toast.up { transform: translateX(-50%) translateY(0); }
+#toast.ok { background: #19a349; }
+#toast.er { background: #c0006a; }
+#toast.gd { background: #4a0080; }
+
+/* DRAWER */
+.drawer-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 400; }
+.drawer-mask.on { display: block; }
+#drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 280px; max-width: 88vw; background: white; z-index: 401; padding: 60px 20px 20px; transform: translateX(110%); transition: transform 0.3s; overflow-y: auto; border-left: 1px solid #ddd; }
+#drawer.open { transform: translateX(0); }
+.drawer-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; }
+.d-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #eee; }
+.d-lbl { font-size: 14px; font-weight: bold; }
+.d-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* TOGGLE */
+.tog { position: relative; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0; }
+.tog input { opacity: 0; width: 0; height: 0; position: absolute; }
+.tog-track { position: absolute; inset: 0; border-radius: 12px; background: #ccc; transition: background 0.2s; }
+.tog input:checked + .tog-track { background: #4a0080; }
+.tog-ball { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.3); transition: transform 0.2s; }
+.tog input:checked ~ .tog-ball { transform: translateX(20px); }
+
+/* GOD INPUT */
+.god-inp { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center; letter-spacing: 4px; margin-top: 8px; font-family: Arial, sans-serif; }
+.god-msg { font-size: 12px; font-weight: bold; text-align: center; padding: 6px; border-radius: 4px; margin-top: 6px; display: none; }
+.god-msg.ok { display: block; background: #e8f5e9; color: #19a349; }
+.god-msg.er { display: block; background: #fff0f4; color: #c0006a; }
+
+/* SHAKE */
+.shk { animation: shk 0.4s; }
+@keyframes shk { 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-6px); } 40%{ transform:translateX(6px); } 60%{ transform:translateX(-4px); } 80%{ transform:translateX(3px); } }
+@keyframes confPop { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+</style>
+
+</head>
+<body>
+
+<div id="loader">
+<div style="font-size:28px;font-weight:bold;color:#4a0080;">LEXIS</div>
+<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div id="topbar">
+<button id="back-btn" onclick="goHome()">← Retour</button>
+<div class="brand">LEXIS</div>
+<button onclick="toggleDrawer()" style="background:rgba(255,255,255,0.2);border:1px solid white;color:white;padding:6px 10px;cursor:pointer;border-radius:4px;">⚙️</button>
+</div>
+
+<div class="drawer-mask" id="dmask" onclick="closeDrawer()"></div>
+<div id="drawer">
+<div class="drawer-title">Parametres</div>
+<div class="d-row">
+<div><div class="d-lbl">Sons</div><div class="d-sub">Effets sonores</div></div>
+<label class="tog"><input type="checkbox" id="sound-chk" checked><div class="tog-track"></div><div class="tog-ball"></div></label>
+</div>
+<div class="d-row">
+<div><div class="d-lbl">Mode rapide</div><div class="d-sub">Indice toutes les 10s</div></div>
+<label class="tog"><input type="checkbox" id="speed-chk"><div class="tog-track"></div><div class="tog-ball"></div></label>
+</div>
+<div class="d-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+<div><div class="d-lbl" style="color:#4a0080;">Mode Createur</div><div class="d-sub">Code secret</div></div>
+<input class="god-inp" id="god-inp" type="password" placeholder="......" maxlength="12">
+<div class="god-msg" id="god-msg"></div>
+</div>
+<div style="margin-top:20px;text-align:center;font-size:11px;color:#bbb;">LEXIS v2.0 - 2026</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- HOME -->
+
+<div id="s-home" class="sc on">
+<div style="text-align:center;padding:20px 0 14px;">
+<div style="font-size:42px;font-weight:bold;color:#4a0080;">LEXIS</div>
+<div style="font-size:13px;color:#888;margin-top:4px;">Le jeu de mots multijoueur illimite</div>
+</div>
+<div class="stats-row">
+<div class="stat-box"><div class="stat-n" id="h-wins">0</div><div class="stat-l">Victoires</div></div>
+<div class="stat-box"><div class="stat-n" id="h-played">0</div><div class="stat-l">Parties</div></div>
+<div class="stat-box"><div class="stat-n" id="h-streak">0</div><div class="stat-l">Serie 🔥</div></div>
+</div>
+<button class="btn btn-primary" onclick="go('s-create')">Creer une partie</button>
+<button class="btn btn-secondary" onclick="go('s-join')">Rejoindre une partie</button>
+<div class="box" style="margin-top:12px;font-size:13px;color:#555;line-height:1.9;">
+<div style="font-weight:bold;margin-bottom:6px;">Comment jouer</div>
+1. Cree ou rejoins une partie<br>
+2. Attends le 2e joueur avec le code<br>
+3. Recois des indices progressifs<br>
+4. Devine le mot avant l'adversaire<br>
+<b>5. Mot trouve = mot suivant automatique !</b>
+</div>
+</div>
+
+<!-- CREATE -->
+
+<div id="s-create" class="sc">
+<div style="text-align:center;padding:10px 0;font-size:22px;font-weight:bold;color:#4a0080;">Nouvelle partie</div>
+<div class="box">
+<label>Ton pseudo</label>
+<input id="c-name" type="text" placeholder="Ex : Shadow42" maxlength="16" autocomplete="off">
+<label>Categorie</label>
+<select id="c-cat">
+<option value="mix">Tout melanger</option>
+<option value="animal">Animaux</option>
+<option value="pays">Pays du monde</option>
+<option value="sport">Sports</option>
+<option value="objet">Objets</option>
+<option value="food">Nourriture</option>
+<option value="science">Science</option>
+<option value="celeb">Personnalites</option>
+</select>
+<label>Difficulte</label>
+<div class="diff-row">
+<div class="diff-pill sel" data-d="easy" onclick="selectDiff(this)">Facile</div>
+<div class="diff-pill" data-d="med" onclick="selectDiff(this)">Moyen</div>
+<div class="diff-pill" data-d="hard" onclick="selectDiff(this)">Difficile</div>
+</div>
+<button class="btn btn-primary" onclick="createGame()">Creer la partie</button>
+<button class="btn btn-secondary" onclick="go('s-home')">Retour</button>
+</div>
+</div>
+
+<!-- JOIN -->
+
+<div id="s-join" class="sc">
+<div style="text-align:center;padding:10px 0;font-size:22px;font-weight:bold;color:#4a0080;">Rejoindre</div>
+<div class="box">
+<label>Ton pseudo</label>
+<input id="j-name" type="text" placeholder="Ex : Ninja99" maxlength="16" autocomplete="off">
+<label>Code de la partie</label>
+<input id="j-code" type="text" placeholder="XXXX" maxlength="4" style="font-size:24px;text-align:center;letter-spacing:6px;font-weight:bold;">
+<button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+<button class="btn btn-secondary" onclick="go('s-home')">Retour</button>
+</div>
+</div>
+
+<!-- LOBBY -->
+
+<div id="s-lobby" class="sc">
+<div class="code-display">
+<div class="code-val" id="l-code">----</div>
+<div class="code-copy" onclick="copyCode()">Appuyer pour copier</div>
+</div>
+<div class="players-row" id="l-players"></div>
+<div class="box" style="text-align:center;">
+<div style="font-weight:bold;" id="l-status-txt">En attente...</div>
+<div class="wait-dots" id="l-wait"><div class="wdot"></div><div class="wdot"></div><div class="wdot"></div></div>
+<button class="btn btn-green" id="l-start" style="display:none;margin-top:12px;" onclick="startGame()">Lancer !</button>
+</div>
+<div id="l-info" style="text-align:center;font-size:11px;color:#888;margin-top:4px;"></div>
+</div>
+
+<!-- GAME -->
+
+<div id="s-game" class="sc">
+
+<div class="game-header">
+<div class="timer-box">
+<div class="timer-val" id="t-display">2:00</div>
+<div class="timer-lbl">Temps</div>
+</div>
+<div class="round-info">
+<div class="round-num" id="g-round-label">Manche 1</div>
+<div class="round-sub" id="g-status">En jeu</div>
+</div>
+<div class="score-badge" id="g-scores-badge">0 - 0</div>
+</div>
+
+<div class="prog-bar"><div class="prog-fill" id="g-prog" style="width:0%"></div></div>
+
+<!-- Banniere mot trouve -->
+
+<div class="next-banner" id="next-banner">
+<div>Mot trouve : <span class="nb-word" id="nb-word"></span></div>
+<div style="font-size:13px;color:#555;margin-top:4px;">Prochain mot dans</div>
+<div class="nb-counter" id="nb-counter">4</div>
+</div>
+
+<div class="god-peek" id="god-peek"></div>
+
+<div class="box">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+<span id="g-cat" style="background:#4a0080;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:bold;">Categorie</span>
+<span id="g-pts" style="color:#4a0080;font-weight:bold;font-size:13px;">100 pts</span>
+</div>
+<div class="blanks" id="g-blanks"></div>
+<div class="word-info" id="g-word-meta"></div>
+</div>
+
+<div class="box">
+<div class="sec-title"><span>Indices</span><span id="g-hint-n"></span></div>
+<div id="g-hints"><div class="no-hint">Premier indice dans quelques secondes...</div></div>
+</div>
+
+<div class="hbar-wrap" id="g-hint-bar" style="display:none;">
+<span>💡</span>
+<div class="hbar-track"><div class="hbar-fill" id="g-bar-fill" style="width:0%"></div></div>
+<span class="hbar-lbl" id="g-bar-txt">20s</span>
+</div>
+
+<div class="box">
+<div class="sec-title"><span>Tentatives</span><span id="g-att-n"></span></div>
+<div class="guess-feed" id="g-feed">
+<div style="text-align:center;font-size:12px;color:#aaa;padding:10px;">Aucune tentative</div>
+</div>
+</div>
+
+<div id="g-input-zone">
+<div class="guess-row">
+<input id="g-inp" type="text" placeholder="MON MOT..." maxlength="32">
+<button class="guess-send" id="g-send">→</button>
+</div>
+</div>
+
+</div>
+
+<!-- END -->
+
+<div id="s-end" class="sc">
+<div style="text-align:center;padding:20px 0;">
+<div style="font-size:56px;">🏆</div>
+<div style="font-size:24px;font-weight:bold;color:#4a0080;margin-top:8px;">Fin de partie !</div>
+<div style="font-size:14px;color:#888;margin-top:6px;" id="e-sub"></div>
+</div>
+<div id="e-scores" class="box"></div>
+<button class="btn btn-primary" onclick="replayFromEnd()">Rejouer</button>
+<button class="btn btn-secondary" onclick="goHome()">Accueil</button>
+</div>
+
+<script>
+'use strict';
+
+// === FIREBASE ===
+let db = null, fbReady = false;
+(function loadFirebase() {
+const s1 = document.createElement('script');
+s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+s1.onload = () => {
+const s2 = document.createElement('script');
+s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+s2.onload = () => {
+try {
+if (!firebase.apps.length) {
+firebase.initializeApp({
+apiKey: "AIzaSyAWW-rnF1dqdCc5kCuI-d9dTSMrBJCrSb0",
+authDomain: "test-a5848.firebaseapp.com",
+databaseURL: "https://test-a5848-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "test-a5848",
+storageBucket: "test-a5848.firebasestorage.app",
+messagingSenderId: "704331097703",
+appId: "1:704331097703:web:613a8f735e863a312316c2"
+});
+}
+db = firebase.database();
+fbReady = true;
+} catch(e) { console.error('Firebase:', e); }
+};
+document.head.appendChild(s2);
+};
+document.head.appendChild(s1);
+})();
+function whenFB(fn) { fbReady ? fn() : setTimeout(() => whenFB(fn), 80); }
+
+// === MOTS ===
+const WORDS = {
+animal: {
+easy: [
+{ w:'CHAT', c:'Animal', h:['Animal domestique populaire','Ronronne quand heureux','Fait miaou'], d:'Felin domestique' },
+{ w:'CHIEN', c:'Animal', h:['Meilleur ami de l\'homme','Aboie et remue la queue','Fidele gardien'], d:'Canide domestique' },
+{ w:'LAPIN', c:'Animal', h:['Longues oreilles','Aime les carottes','Symbole de Paques'], d:'Petit mammifere' },
+{ w:'LION', c:'Animal', h:['Roi de la jungle','Criniere impressionnante','Rugit tres fort'], d:'Grand felin africain' },
+{ w:'DAUPHIN', c:'Animal', h:['Mammifere marin','Communique par ultrasons','Tres intelligent'], d:'Cetace joueur' },
+{ w:'ELEPHANT', c:'Animal', h:['Plus grand animal terrestre','Tres longue memoire','Defenses en ivoire'], d:'Mammifere a trompe' },
+{ w:'PERROQUET', c:'Animal', h:['Oiseau colore','Parle et imite','Sur l\'epaule des pirates'], d:'Oiseau qui repete' },
+{ w:'TIGRE', c:'Animal', h:['Grand felin raye','Asie du Sud','Chasse en solitaire'], d:'Felin d\'Asie' },
+{ w:'GIRAFE', c:'Animal', h:['Tres long cou','Mange en hauteur','Taches brunes'], d:'Mammifere au long cou' },
+{ w:'PINGOUIN', c:'Animal', h:['Ne vole pas','Vit en Antarctique','Nage tres bien'], d:'Oiseau polaire' },
+{ w:'CROCODILE', c:'Animal', h:['Reptile semi-aquatique','Grande gueule','Peau ecailleuse'], d:'Grand reptile' },
+{ w:'KANGOUROU', c:'Animal', h:['Australie','Poche ventrale','Saute tres loin'], d:'Marsupial australien' },
+],
+med: [
+{ w:'FENNEC', c:'Animal', h:['Petit renard du desert','Grandes oreilles','Nocturne dans le Sahara'], d:'Renard du desert' },
+{ w:'AXOLOTL', c:'Animal', h:['Amphibien mexicain','Larve permanente','Rose ou albinos'], d:'Amphibien neotenic' },
+{ w:'CAPYBARA', c:'Animal', h:['Plus grand rongeur','Tres calme','Amerique du Sud'], d:'Grand rongeur' },
+{ w:'QUOKKA', c:'Animal', h:['Marsupial australien','Toujours l\'air de sourire','Star d\'Internet'], d:'Marsupial souriant' },
+{ w:'ORNITHORYNQUE', c:'Animal', h:['Mammifere pond des oeufs','Bec de canard','Australie'], d:'Mammifere ovipare' },
+{ w:'MANDRILL', c:'Animal', h:['Primate africain','Face coloree bleue et rouge','Vit en groupe'], d:'Grand singe africain' },
+],
+hard: [
+{ w:'COELACANTHE', c:'Animal', h:['Poisson fossile vivant','Redecouvert en 1938','Nageoires lobees'], d:'Poisson fossile' },
+{ w:'TARDIGRADE', c:'Animal', h:['Survit dans l\'espace','8 pattes microscopique','Le plus resistant'], d:'Micro-animal resistant' },
+{ w:'BINTURONG', c:'Animal', h:['Sent le popcorn','Mammifere d\'Asie','Appele ours chat'], d:'Mammifere asiatique' },
+]
+},
+pays: {
+easy: [
+{ w:'JAPON', c:'Pays', h:['Pays du Soleil Levant','Mangas et sushis','Capitale Tokyo'], d:'Archipel d\'Asie' },
+{ w:'BRESIL', c:'Pays', h:['5x champion du monde foot','Parle portugais','Amazonie'], d:'Plus grand pays d\'Amerique du Sud' },
+{ w:'EGYPTE', c:'Pays', h:['Pharaons et pyramides','Le Nil','Le Sphinx'], d:'Pays des pharaons' },
+{ w:'CANADA', c:'Pays', h:['2e plus grand pays','Feuille d\'erable','Capitale Ottawa'], d:'Grand pays du Nord' },
+{ w:'FRANCE', c:'Pays', h:['Tour Eiffel','Cuisine mondiale','Capitale Paris'], d:'Pays d\'Europe' },
+{ w:'AUSTRALIE', c:'Pays', h:['Continent et pays','Kangourous','Capitale Canberra'], d:'Continent-pays' },
+{ w:'RUSSIE', c:'Pays', h:['Plus grand pays du monde','Siberie','Capitale Moscou'], d:'Plus grand pays' },
+{ w:'ESPAGNE', c:'Pays', h:['Flamenco et paella','Barcelone et Madrid','Toros'], d:'Pays iberique' },
+{ w:'MEXIQUE', c:'Pays', h:['Tacos et guacamole','Pyramides mayas','Capitale Mexico'], d:'Pays d\'Amerique centrale' },
+{ w:'ITALIE', c:'Pays', h:['En forme de botte','Pizza et pasta','Capitale Rome'], d:'Pays de la botte' },
+],
+med: [
+{ w:'NAMIBIE', c:'Pays', h:['Desert du Namib','Cote des Squelettes','Faible densite'], d:'Pays aride d\'Afrique' },
+{ w:'BHOUTAN', c:'Pays', h:['Bonheur National Brut','Royaume himalayen','Bouddhiste'], d:'Royaume du bonheur' },
+{ w:'GEORGIE', c:'Pays', h:['Caucase','Berceau du vin','Capitale Tbilissi'], d:'Pays du Caucase' },
+{ w:'MONGOLIE', c:'Pays', h:['Steppe immense','Gengis Khan','Yourtes nomades'], d:'Pays des steppes' },
+{ w:'ISLANDE', c:'Pays', h:['Ile volcanique','Aurores boreales','Geysers'], d:'Ile volcanique du nord' },
+],
+hard: [
+{ w:'LIECHTENSTEIN', c:'Pays', h:['Doublement enclave','Entre Suisse et Autriche','Tres petit'], d:'Micro-Etat europeen' },
+{ w:'VANUATU', c:'Pays', h:['Pacifique Sud','Volcans actifs','Port-Vila'], d:'Nation insulaire' },
+{ w:'DJIBOUTI', c:'Pays', h:['Corne de l\'Afrique','Mer Rouge','Pays et capitale meme nom'], d:'Petit pays d\'Afrique' },
+]
+},
+sport: {
+easy: [
+{ w:'TENNIS', c:'Sport', h:['Raquette','15 30 40 jeu','Wimbledon Roland-Garros'], d:'Sport de raquette' },
+{ w:'NATATION', c:'Sport', h:['Dans l\'eau','4 nages officielles','Longueurs de bassin'], d:'Sport aquatique' },
+{ w:'BOXE', c:'Sport', h:['Gants en cuir','Ring de cordes','K.O. possible'], d:'Sport de combat' },
+{ w:'JUDO', c:'Sport', h:['Art martial japonais','Kimono blanc','Projeter l\'adversaire'], d:'Art martial' },
+{ w:'FOOTBALL', c:'Sport', h:['Le plus populaire','11 joueurs','But avec les pieds'], d:'Sport collectif' },
+{ w:'BASKETBALL', c:'Sport', h:['Panier suspendu','5 contre 5','NBA est la ligue pro'], d:'Sport au panier' },
+{ w:'CYCLISME', c:'Sport', h:['A velo','Tour de France','Maillot jaune'], d:'Sport a velo' },
+{ w:'GOLF', c:'Sport', h:['Balle et club','18 trous','Terrain tres grand'], d:'Sport de precision' },
+],
+med: [
+{ w:'ESCRIME', c:'Sport', h:['Epee fine','Fleuret epee sabre','Masque blanc'], d:'Sport a l\'epee' },
+{ w:'CURLING', c:'Sport', h:['Glace','On lance une pierre','On balaie'], d:'Sport hivernal' },
+{ w:'BIATHLON', c:'Sport', h:['Ski de fond + tir','Olympique d\'hiver','Penalite si rate'], d:'Sport combine' },
+{ w:'PLONGEON', c:'Sport', h:['Du haut d\'un plongeoir','Figures acrobatiques','Piscine'], d:'Sport aquatique acrobatique' },
+],
+hard: [
+{ w:'SEPAKTAKRAW',c:'Sport', h:['Asie du Sud-Est','Balle en rotin','Volley avec les pieds'], d:'Sport asiatique' },
+{ w:'KABADDI', c:'Sport', h:['Bangladesh et Inde','Retenir sa respiration','Contact physique'], d:'Sport de contact' },
+]
+},
+objet: {
+easy: [
+{ w:'LUNETTES', c:'Objet', h:['Sur le nez','Corrigent la vue','Deux verres une monture'], d:'Optique correctrice' },
+{ w:'PARAPLUIE', c:'Objet', h:['Protege de la pluie','S\'ouvre et se ferme','Toile impermeable'], d:'Protection pluie' },
+{ w:'HORLOGE', c:'Objet', h:['Mesure le temps','Au mur ou posee','Tic-tac'], d:'Instrument du temps' },
+{ w:'TELEPHONE', c:'Objet', h:['Ecran tactile','Applications','Appels et messages'], d:'Appareil de communication' },
+{ w:'ORDINATEUR', c:'Objet', h:['Clavier et ecran','Travail et jeux','Windows ou Mac'], d:'Machine de calcul' },
+{ w:'STYLO', c:'Objet', h:['Pour ecrire','Encre','Bouchon'], d:'Outil d\'ecriture' },
+{ w:'MIROIR', c:'Objet', h:['Reflete l\'image','En verre','Belle au bois dormant'], d:'Surface reflechissante' },
+{ w:'BOUTEILLE', c:'Objet', h:['Contient un liquide','En verre ou plastique','A un goulot'], d:'Recipient a liquide' },
+],
+med: [
+{ w:'SEXTANT', c:'Objet', h:['Navigation maritime','Mesure des angles','Avant le GPS'], d:'Instrument de navigation' },
+{ w:'ALAMBIC', c:'Objet', h:['Distille des liquides','Alcools artisanaux','Col de cygne'], d:'Appareil de distillation' },
+{ w:'METRONOME', c:'Objet', h:['Rythme pour musiciens','Balancier','Tic-tac au tempo'], d:'Appareil a tempo' },
+{ w:'BOUSSOLE', c:'Objet', h:['Indique le Nord','Aiguille magnetique','Navigation terrestre'], d:'Instrument de navigation' },
+],
+hard: [
+{ w:'HYGROMETRE', c:'Objet', h:['Mesure l\'humidite','Cave a vin','Meteo'], d:'Instrument d\'humidite' },
+{ w:'GYROSCOPE', c:'Objet', h:['Maintient son orientation','Smartphones','Avions et drones'], d:'Instrument de stabilisation' },
+]
+},
+food: {
+easy: [
+{ w:'SUSHI', c:'Nourriture', h:['Plat japonais','Riz vinaigrė','Baguettes'], d:'Plat japonais' },
+{ w:'PIZZA', c:'Nourriture', h:['Italien','Pate sauce tomate fromage','Parts triangulaires'], d:'Plat italien' },
+{ w:'CROISSANT', c:'Nourriture', h:['Viennoiserie doree','Forme de lune','Au beurre feuillete'], d:'Viennoiserie' },
+{ w:'HAMBURGER', c:'Nourriture', h:['Pain boeuf salade','Fast-food','McDonalds'], d:'Sandwich americain' },
+{ w:'CHOCOLAT', c:'Nourriture', h:['Cacao et sucre','Noir lait blanc','Tres aime'], d:'Confiserie au cacao' },
+{ w:'CREPE', c:'Nourriture', h:['Fine et ronde','Farine oeufs lait','Chandeleur'], d:'Galette fine' },
+{ w:'OMELETTE', c:'Nourriture', h:['A base d\'oeufs','Fouette et cuit','Peut etre garnie'], d:'Plat aux oeufs' },
+{ w:'FROMAGE', c:'Nourriture', h:['Produit laitier','Camenbert brie roquefort','France 300+ varietes'], d:'Produit laitier fermente' },
+],
+med: [
+{ w:'BOUILLABAISSE', c:'Nourriture', h:['Soupe de poissons','Marseille','Rouille et croûtons'], d:'Soupe provencale' },
+{ w:'TIRAMISU', c:'Nourriture', h:['Dessert italien','Mascarpone et cafe','Tire-moi vers le haut'], d:'Dessert cremeux' },
+{ w:'KIMCHI', c:'Nourriture', h:['Coreeen','Chou piment ail','Fermente'], d:'Legumes fermentes' },
+{ w:'GUACAMOLE', c:'Nourriture', h:['Mexicain','Avocat ecrase','Nachos'], d:'Sauce a l\'avocat' },
+],
+hard: [
+{ w:'SURSTROMING',c:'Nourriture', h:['Hareng fermente suedois','Odeur tres forte','Interdit en interieur'], d:'Poisson fermente' },
+{ w:'BRIGADEIRO', c:'Nourriture', h:['Bresilien','Lait condense cacao','Vermicelles chocolat'], d:'Bonbon bresilien' },
+]
+},
+science: {
+easy: [
+{ w:'ATOME', c:'Science', h:['Brique de la matiere','Protons neutrons electrons','Invisible'], d:'Unite de la matiere' },
+{ w:'GALAXIE', c:'Science', h:['Milliards d\'etoiles','Voie Lactee','Spirale ou elliptique'], d:'Systeme d\'etoiles' },
+{ w:'VOLCAN', c:'Science', h:['Cratere en eruption','Lave et cendres','Pompeii'], d:'Relief volcanique' },
+{ w:'ECLIPSE', c:'Science', h:['Astre cache par un autre','Solaire ou lunaire','Rare et impressionnante'], d:'Phenomene astronomique' },
+{ w:'LASER', c:'Science', h:['Rayon de lumiere concentre','Utilisé en medecine','Spectacles sons et lumieres'], d:'Rayon lumineux concentre' },
+],
+med: [
+{ w:'QUASAR', c:'Science', h:['Noyau de galaxie actif','Tres lumineux','Trou noir supermassif'], d:'Noyau galactique' },
+{ w:'MITOCHONDRIE',c:'Science',h:['Organite cellulaire','Centrale energetique','Puissance de la cellule'], d:'Organite cellulaire' },
+{ w:'PHOTOSYNTHESE',c:'Science',h:['Plantes vertes','Lumiere CO2 eau en sucres','Chlorophylle'], d:'Conversion energie' },
+{ w:'CHROMOSOME', c:'Science', h:['ADN enroule','23 paires chez l\'humain','Herite des parents'], d:'Support genetique' },
+],
+hard: [
+{ w:'BIOLUMINESCENCE',c:'Science',h:['Lumiere d\'etres vivants','Lucioles et meduses','Sans chaleur'], d:'Lumiere du vivant' },
+{ w:'ANTIMATIERE', c:'Science', h:['Oppose de la matiere','Annihilation au contact','CERN en produit'], d:'Contrepartie de la matiere' },
+]
+},
+celeb: {
+easy: [
+{ w:'EINSTEIN', c:'Celebrite', h:['Physicien','Theorie de la relativite','E=mc2'], d:'Physicien revolutionnaire' },
+{ w:'NAPOLEON', c:'Celebrite', h:['Pas si petit','General et Empereur','Exile a Sainte-Helene'], d:'Empereur des Francais' },
+{ w:'DARWIN', c:'Celebrite', h:['Naturaliste anglais','Evolution des especes','Beagle'], d:'Pere de l\'evolution' },
+{ w:'MOZART', c:'Celebrite', h:['Compositeur prodige','Compose a 5 ans','Requiem inacheve'], d:'Compositeur autrichien' },
+{ w:'GANDHI', c:'Celebrite', h:['Leader indien','Non-violence','Independence de l\'Inde'], d:'Leader pacifiste' },
+],
+med: [
+{ w:'TESLA', c:'Celebrite', h:['Inventeur','Courant alternatif','Rival d\'Edison'], d:'Inventeur electricite' },
+{ w:'CURIE', c:'Celebrite', h:['Deux Prix Nobel','Premiere femme Nobel','Radioactivite'], d:'Pionniere radioactivite' },
+{ w:'TURING', c:'Celebrite', h:['Pere de l\'informatique','Code Enigma','Test de l\'IA'], d:'Fondateur informatique' },
+{ w:'PICASSO', c:'Celebrite', h:['Peintre espagnol','Cubisme','Guernica'], d:'Peintre cubiste' },
+],
+hard: [
+{ w:'LOVELACE', c:'Celebrite', h:['Fille de Lord Byron','Premiere programmeuse','Machine de Babbage'], d:'Premiere programmeuse' },
+{ w:'FIBONACCI', c:'Celebrite', h:['Mathematicien medieval','Suite 0 1 1 2 3 5','Chiffres arabes en Europe'], d:'Mathematicien medieval' },
+]
+}
+};
+
+function buildMix() {
+const mix = { easy:[], med:[], hard:[] };
+Object.keys(WORDS).forEach(cat => {
+['easy','med','hard'].forEach(d => { if (WORDS[cat][d]) mix[d].push(...WORDS[cat][d]); });
+});
+WORDS.mix = mix;
+}
+buildMix();
+
+const usedWords = new Set();
+function pickWord(cat, diff) {
+let pool = (WORDS[cat]?.[diff] || WORDS.mix[diff] || WORDS.mix.easy).filter(w => !usedWords.has(w.w));
+if (!pool.length) { usedWords.clear(); pool = WORDS[cat]?.[diff] || WORDS.mix[diff] || WORDS.mix.easy; }
+const w = pool[Math.floor(Math.random() * pool.length)];
+usedWords.add(w.w);
+return w;
+}
+
+// === ETAT ===
+const myId = sessionStorage.getItem('lexis_uid') || Math.random().toString(36).slice(2,11);
+sessionStorage.setItem('lexis_uid', myId);
+
+let myName = '', roomCode = '', roomRef = null, unsub = null;
+let selDiff = 'easy', selCat = 'mix';
+let godMode = false, soundOn = true;
+let timerInterval = null, hintBarInterval = null, hintPushInterval = null, nextWordInterval = null;
+let timerMax = 120, timerLeft = 0;
+let lastHintCount = 0, endHandled = false, roundHandled = false;
+let prevRoundWinner = null;
+
+const GOD_CODE = 'LEXIS2026';
+let stats = JSON.parse(localStorage.getItem('lexis_stats') || '{"wins":0,"played":0,"streak":0}');
+function saveStats() { localStorage.setItem('lexis_stats', JSON.stringify(stats)); }
+
+// === UTILS ===
+function genCode() {
+const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+let toastT;
+function toast(msg, type='if', dur=2500) {
+const el = document.getElementById('toast');
+el.textContent = msg; el.className = 'up ' + type;
+clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('up'), dur);
+}
+
+function shk(id) {
+const el = document.getElementById(id); if (!el) return;
+el.classList.add('shk'); setTimeout(() => el.classList.remove('shk'), 450);
+}
+
+function copyCode() {
+if (navigator.clipboard) navigator.clipboard.writeText(roomCode).then(() => toast('Code copie !','ok')).catch(() => toast('Code : '+roomCode));
+else toast('Code : '+roomCode);
+}
+
+function lev(a, b) {
+const m = a.length, n = b.length;
+const dp = Array.from({length:m+1}, (_,i) => Array.from({length:n+1}, (_,j) => i===0?j:j===0?i:0));
+for (let i=1;i<=m;i++) for (let j=1;j<=n;j++)
+dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+return dp[m][n];
+}
+
+function playSound(type) {
+if (!soundOn) return;
+try {
+const ctx = new (window.AudioContext||window.webkitAudioContext)();
+const osc = ctx.createOscillator(), gain = ctx.createGain();
+osc.connect(gain); gain.connect(ctx.destination);
+if (type === 'win') {
+[523,659,784,1047].forEach((f,i) => osc.frequency.setValueAtTime(f, ctx.currentTime+i*.12));
+gain.gain.setValueAtTime(.3, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.8);
+osc.start(ctx.currentTime); osc.stop(ctx.currentTime+.8);
+} else if (type === 'miss') {
+osc.frequency.setValueAtTime(180, ctx.currentTime);
+gain.gain.setValueAtTime(.2, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.3);
+osc.start(); osc.stop(ctx.currentTime+.3);
+} else if (type === 'next') {
+[440,660].forEach((f,i) => osc.frequency.setValueAtTime(f, ctx.currentTime+i*.15));
+gain.gain.setValueAtTime(.2, ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.35);
+osc.start(); osc.stop(ctx.currentTime+.35);
+}
+} catch(e) {}
+}
+
+function confetti() {
+const cols = ['#4a0080','#c0006a','#e06000','#ffd700','#19a349'];
+for (let i=0; i<70; i++) {
+const el = document.createElement('div');
+const sz = 5 + Math.random()*10;
+el.style.cssText = `position:fixed;left:${Math.random()*100}vw;top:-20px;width:${sz}px;height:${sz}px;background:${cols[Math.floor(Math.random()*cols.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation:confPop ${2+Math.random()*2}s ${Math.random()}s linear forwards;z-index:9999;pointer-events:none;`;
+document.body.appendChild(el);
+setTimeout(() => el.remove(), 4000);
+}
+}
+
+// === NAVIGATION ===
+function go(id) {
+document.querySelectorAll('.sc').forEach(s => s.classList.remove('on'));
+document.getElementById(id).classList.add('on');
+document.getElementById('back-btn').classList.toggle('vis', ['s-create','s-join','s-lobby','s-game','s-end'].includes(id));
+}
+
+function goHome() {
+stopAllTimers(); leaveRoom(); go('s-home'); updateHomeStats();
+}
+
+function leaveRoom() {
+if (unsub) { unsub(); unsub = null; }
+roomRef = null; roomCode = '';
+endHandled = false; roundHandled = false; prevRoundWinner = null;
+usedWords.clear();
+}
+
+function stopAllTimers() {
+clearInterval(timerInterval); clearInterval(hintBarInterval);
+clearInterval(hintPushInterval); clearInterval(nextWordInterval);
+}
+
+function updateHomeStats() {
+document.getElementById('h-wins').textContent = stats.wins;
+document.getElementById('h-played').textContent = stats.played;
+document.getElementById('h-streak').textContent = stats.streak;
+}
+
+function selectDiff(el) {
+document.querySelectorAll('.diff-pill').forEach(p => p.classList.remove('sel'));
+el.classList.add('sel'); selDiff = el.dataset.d;
+}
+
+function toggleDrawer() {
+document.getElementById('drawer').classList.toggle('open');
+document.getElementById('dmask').classList.toggle('on');
+}
+function closeDrawer() {
+document.getElementById('drawer').classList.remove('open');
+document.getElementById('dmask').classList.remove('on');
+}
+
+// === CREER ===
+function createGame() {
+const name = document.getElementById('c-name').value.trim();
+if (!name) { toast('Entre ton pseudo !','er'); shk('c-name'); return; }
+const code = genCode();
+const speed = document.getElementById('speed-chk').checked;
+const cat = document.getElementById('c-cat').value;
+const wordObj = pickWord(cat, selDiff);
+myName = name; roomCode = code; selCat = cat;
+
+const data = {
+code, hostId:myId, status:'lobby',
+category:cat, difficulty:selDiff, speedMode:speed,
+word:wordObj.w, meta:{ cat:wordObj.c, hints:wordObj.h, def:wordObj.d },
+hints:[], guesses:{}, scores:{}, roundWinner:null, roundNum:1,
+startedAt:null, hintPushedAt:null, players:{}, createdAt:Date.now()
+};
+data.players[myId] = { id:myId, name, av:0, joinedAt:Date.now() };
+data.scores[myId] = 0;
+
+whenFB(() => {
+db.ref('lexis/'+code).set(data)
+.then(() => { attachListener(code); go('s-lobby'); toast('Partie creee ! Code : '+code,'ok',4000); })
+.catch(e => toast('Erreur : '+e.message,'er'));
+});
+}
+
+// === REJOINDRE ===
+function joinGame() {
+const name = document.getElementById('j-name').value.trim();
+const code = document.getElementById('j-code').value.trim().toUpperCase();
+if (!name) { toast('Entre ton pseudo !','er'); shk('j-name'); return; }
+if (code.length !== 4) { toast('Code a 4 caracteres !','er'); shk('j-code'); return; }
+
+whenFB(() => {
+db.ref('lexis/'+code).get().then(snap => {
+if (!snap.exists()) { toast('Code invalide !','er'); shk('j-code'); return; }
+const room = snap.val();
+if (room.status !== 'lobby') { toast('Partie deja commencee !','er'); return; }
+if (Object.keys(room.players||{}).length >= 2) { toast('Partie complete !','er'); return; }
+myName = name; roomCode = code;
+const upd = {};
+upd[`players/${myId}`] = { id:myId, name, av:1, joinedAt:Date.now() };
+upd[`scores/${myId}`] = 0;
+db.ref('lexis/'+code).update(upd)
+.then(() => { attachListener(code); go('s-lobby'); toast('Bienvenue '+name+' !','ok'); })
+.catch(e => toast('Erreur : '+e.message,'er'));
+}).catch(e => toast('Erreur : '+e.message,'er'));
+});
+}
+
+// === LISTENER ===
+function attachListener(code) {
+if (unsub) unsub();
+roomRef = db.ref('lexis/'+code);
+roomRef.on('value', snap => {
+if (!snap.exists()) return;
+const room = snap.val();
+const cur = document.querySelector('.sc.on')?.id || '';
+
+// Detecter reset du mot (roundWinner passe a null = nouveau mot charge)
+if (prevRoundWinner !== null && (room.roundWinner === null || room.roundWinner === undefined)) {
+roundHandled = false;
+lastHintCount = 0;
+document.getElementById('next-banner').classList.remove('on');
+document.getElementById('g-input-zone').style.display = 'block';
+clearInterval(nextWordInterval);
+if (cur === 's-game') toast('Manche '+room.roundNum+' - Nouveau mot !','gd',2000);
+}
+prevRoundWinner = room.roundWinner || null;
+
+switch (room.status) {
+case 'lobby': renderLobby(room); break;
+case 'playing':
+if (cur === 's-lobby') { go('s-game'); initGame(room); }
+renderGame(room);
+break;
+case 'ended': handleEnd(room); break;
+}
+});
+unsub = () => roomRef.off('value');
+}
+
+// === LOBBY ===
+function renderLobby(room) {
+document.getElementById('l-code').textContent = room.code;
+const players = Object.values(room.players||{}).sort((a,b) => a.joinedAt-b.joinedAt);
+const listEl = document.getElementById('l-players');
+listEl.innerHTML = '';
+const emojis = ['😎','🦊'];
+players.forEach((p, i) => {
+const isMe = p.id === myId;
+const div = document.createElement('div');
+div.className = 'p-card' + (isMe?' me':' ready');
+div.innerHTML = `<div class="p-av">${emojis[i]}</div><div class="p-name">${p.name}</div><div class="p-status" style="color:${isMe?'#4a0080':'#19a349'}">${isMe?'Toi':'Connecte ✓'}</div>`;
+listEl.appendChild(div);
+});
+if (players.length < 2) {
+const empty = document.createElement('div');
+empty.className = 'p-card';
+empty.innerHTML = '<div class="p-av">⏳</div><div class="p-name" style="color:#bbb">En attente...</div><div class="p-status">Partage le code</div>';
+listEl.appendChild(empty);
+}
+const cnt = players.length, isHost = room.hostId === myId, canStart = cnt >= 2;
+document.getElementById('l-status-txt').textContent = canStart ? `${cnt} joueurs prets !` : 'En attente du 2eme joueur...';
+document.getElementById('l-wait').style.display = canStart ? 'none' : 'flex';
+document.getElementById('l-start').style.display = (isHost && canStart) ? 'block' : 'none';
+const catN = {mix:'Tout',animal:'Animaux',pays:'Pays',sport:'Sports',objet:'Objets',food:'Nourriture',science:'Science',celeb:'Celebrites'};
+const diffN = {easy:'Facile',med:'Moyen',hard:'Difficile'};
+document.getElementById('l-info').textContent = `${catN[room.category]||room.category} - ${diffN[room.difficulty]||room.difficulty}${room.speedMode?' - Mode rapide':''}`;
+}
+
+// === LANCER ===
+function startGame() {
+whenFB(() => {
+db.ref('lexis/'+roomCode).get().then(snap => {
+const room = snap.val();
+if (!room || Object.keys(room.players||{}).length < 2) { toast('Il faut 2 joueurs !','er'); return; }
+db.ref('lexis/'+roomCode).update({ status:'playing', startedAt:Date.now(), hintPushedAt:Date.now(), updatedAt:Date.now() });
+});
+});
+}
+
+// === INIT JEU ===
+function initGame(room) {
+stopAllTimers();
+endHandled = false; roundHandled = false; lastHintCount = 0; timerMax = 120;
+const elapsed = Math.floor((Date.now() - room.startedAt) / 1000);
+timerLeft = Math.max(0, timerMax - elapsed);
+startTimer(room);
+if (room.hostId === myId) startHintPush(room);
+}
+
+// === TIMER ===
+function startTimer(room) {
+clearInterval(timerInterval);
+updateTimerDisplay(timerLeft);
+timerInterval = setInterval(() => {
+timerLeft--;
+updateTimerDisplay(timerLeft);
+if (timerLeft <= 0) {
+clearInterval(timerInterval);
+if (room.hostId === myId) db.ref('lexis/'+roomCode).update({ status:'ended', updatedAt:Date.now() });
+}
+}, 1000);
+}
+
+function updateTimerDisplay(t) {
+const el = document.getElementById('t-display'); if (!el) return;
+const m = Math.floor(t/60), s = t%60;
+el.textContent = `${m}:${s<10?'0':''}${s}`;
+el.style.color = t > 60 ? '#4a0080' : t > 30 ? '#e06000' : '#c0006a';
+}
+
+// === INDICES ===
+function startHintPush(room) {
+clearInterval(hintPushInterval);
+const interval = (room.speedMode ? 10 : 20) * 1000;
+pushNextHint(); hintPushInterval = setInterval(pushNextHint, interval);
+}
+
+function pushNextHint() {
+whenFB(() => {
+db.ref('lexis/'+roomCode).get().then(snap => {
+if (!snap.exists()) return;
+const room = snap.val();
+if (room.status !== 'playing') { clearInterval(hintPushInterval); return; }
+const hints = room.hints || [], meta = room.meta;
+const maxH = (meta.hints?.length || 0) + 2;
+if (hints.length >= maxH) return;
+
+let next;
+if (hints.length === 0) next = `Categorie : ${meta.cat}`;
+else if (hints.length === 1) next = `Premiere lettre : ${room.word[0]}`;
+else next = meta.hints?.[hints.length-2] || `Definition : ${meta.def}`;
+
+hints.push(next);
+db.ref('lexis/'+roomCode).update({ hints, hintPushedAt:Date.now(), updatedAt:Date.now() });
+});
+});
+}
+
+// === RENDU JEU ===
+function renderGame(room) {
+renderBlanks(room); renderHints(room); renderGuesses(room); renderHintBar(room); updateGodPeek(room);
+
+const hints = room.hints || [];
+if (hints.length > lastHintCount) { lastHintCount = hints.length; }
+
+const pts = Math.max(10, 100 - (hints.length * 15));
+document.getElementById('g-pts').textContent = `${pts} pts`;
+document.getElementById('g-round-label').textContent = `Manche ${room.roundNum || 1}`;
+
+const players = Object.values(room.players||{});
+const scores = room.scores || {};
+if (players.length >= 2) {
+const p0 = players[0], p1 = players[1];
+document.getElementById('g-scores-badge').textContent = `${scores[p0.id]||0} - ${scores[p1.id]||0}`;
+}
+
+const maxH = (room.meta?.hints?.length || 3) + 2;
+document.getElementById('g-prog').style.width = (hints.length / maxH * 100) + '%';
+
+// Mot trouve par quelqu'un ?
+if (room.roundWinner && !roundHandled) {
+roundHandled = true;
+showNextWordBanner(room);
+}
+
+const blocked = room.roundWinner;
+document.getElementById('g-input-zone').style.display = blocked ? 'none' : 'block';
+}
+
+function showNextWordBanner(room) {
+const isWinner = room.roundWinner === myId;
+document.getElementById('nb-word').textContent = room.word;
+document.getElementById('next-banner').classList.add('on');
+
+if (isWinner) { playSound('win'); confetti(); toast('BRAVO ! Mot trouve !','gd',3000); }
+else {
+const winnerName = room.players?.[room.roundWinner]?.name || 'L\'adversaire';
+toast(winnerName+' a trouve !','if',3000);
+playSound('next');
+}
+
+stats.played++;
+if (isWinner) { stats.wins++; stats.streak++; } else { stats.streak = 0; }
+saveStats(); updateHomeStats();
+
+let countdown = 4;
+document.getElementById('nb-counter').textContent = countdown;
+nextWordInterval = setInterval(() => {
+countdown--;
+document.getElementById('nb-counter').textContent = countdown;
+if (countdown <= 0) {
+clearInterval(nextWordInterval);
+if (room.hostId === myId) loadNextWord(room);
+}
+}, 1000);
+}
+
+function loadNextWord(room) {
+const wordObj = pickWord(room.category, room.difficulty);
+db.ref('lexis/'+roomCode).update({
+word: wordObj.w,
+meta: { cat:wordObj.c, hints:wordObj.h, def:wordObj.d },
+hints: [],
+guesses: {},
+roundWinner: null,
+roundNum: (room.roundNum || 1) + 1,
+hintPushedAt:Date.now(),
+updatedAt: Date.now()
+}).then(() => {
+clearInterval(hintPushInterval);
+startHintPush(room);
+});
+}
+
+function renderBlanks(room) {
+const word = room.word || '', hints = room.hints || [];
+const blankEl = document.getElementById('g-blanks');
+blankEl.innerHTML = '';
+
+const revealed = new Set();
+if (hints.length >= 2) {
+const n = Math.floor(hints.length / 2);
+for (let i=0; i<Math.min(n, word.length-1); i++) revealed.add(i);
+}
+
+for (let i=0; i<word.length; i++) {
+const sp = document.createElement('span');
+if (word[i] === ' ') sp.className = 'blank sp';
+else { sp.className = 'blank'; sp.textContent = revealed.has(i) ? word[i] : ''; }
+blankEl.appendChild(sp);
+}
+
+const realLen = word.replace(/ /g,'').length;
+document.getElementById('g-word-meta').textContent = `${realLen} lettre${realLen>1?'s':''}`;
+document.getElementById('g-cat').textContent = room.meta?.cat || room.category;
+}
+
+function renderHints(room) {
+const hints = room.hints || [];
+const hEl = document.getElementById('g-hints');
+hEl.innerHTML = '';
+document.getElementById('g-hint-n').textContent = hints.length ? `${hints.length} indice${hints.length>1?'s':''}` : '';
+
+if (!hints.length) { hEl.innerHTML = '<div class="no-hint">Premier indice dans quelques secondes...</div>'; return; }
+
+const icons = ['#','A','1','2','3','4','5','6'];
+const labels = ['Categorie','1ere lettre','Indice 1','Indice 2','Indice 3','Indice 4','Bonus','Final'];
+hints.forEach((h, i) => {
+const div = document.createElement('div');
+div.className = 'hint-item';
+div.innerHTML = `<div class="hint-icon">${icons[i]||'+'}</div><div><div class="hint-lbl">${labels[i]||'Indice'}</div><div class="hint-txt">${h}</div></div>`;
+hEl.appendChild(div);
+});
+}
+
+function renderGuesses(room) {
+const guesses = room.guesses || {}, players = room.players || {};
+const feed = document.getElementById('g-feed');
+feed.innerHTML = '';
+
+const list = Object.entries(guesses)
+.filter(([,v]) => v && typeof v === 'object')
+.map(([pid,v]) => ({ name:(players[pid]?.name||'?'), ...v }))
+.sort((a,b) => (a.at||0)-(b.at||0));
+
+if (!list.length) { feed.innerHTML = '<div style="text-align:center;font-size:12px;color:#aaa;padding:10px;">Aucune tentative</div>'; return; }
+
+list.forEach(g => {
+const div = document.createElement('div');
+div.className = 'g-item' + (g.correct?' win':g.close?' close':'');
+div.innerHTML = `<span style="font-weight:bold;">${g.name}</span><span class="g-word">${g.word}</span><span>${g.correct?'✅':g.close?'🟡':'❌'}</span>`;
+feed.appendChild(div);
+});
+document.getElementById('g-att-n').textContent = `${list.length} tentative${list.length>1?'s':''}`;
+}
+
+function renderHintBar(room) {
+const bar = document.getElementById('g-hint-bar');
+const hints = room.hints || [], maxH = (room.meta?.hints?.length || 3) + 2;
+if (hints.length >= maxH) { bar.style.display='none'; return; }
+bar.style.display = 'flex';
+
+const interval = (room.speedMode ? 10 : 20) * 1000;
+clearInterval(hintBarInterval);
+const update = () => {
+const elapsed = Date.now() - (room.hintPushedAt || room.startedAt);
+const pct = Math.min(100, (elapsed/interval)*100);
+const remain = Math.max(0, Math.ceil((interval-elapsed)/1000));
+document.getElementById('g-bar-fill').style.width = pct + '%';
+document.getElementById('g-bar-txt').textContent = `Prochain indice : ${remain}s`;
+};
+update(); hintBarInterval = setInterval(update, 500);
+}
+
+function updateGodPeek(room) {
+const el = document.getElementById('god-peek'); if (!el) return;
+if (godMode) { el.textContent = 'MOT : ' + room.word; el.classList.add('on'); }
+else el.classList.remove('on');
+}
+
+// === DEVINER ===
+function submitGuess() {
+const inpEl = document.getElementById('g-inp');
+const guess = inpEl.value.trim().toUpperCase();
+if (!guess) { shk('g-inp'); return; }
+inpEl.value = '';
+
+whenFB(() => {
+db.ref('lexis/'+roomCode).get().then(snap => {
+const room = snap.val();
+if (!room || room.status !== 'playing') return;
+if (room.roundWinner) { toast('Mot deja trouve ! Prochain mot...','if'); return; }
+
+const target = room.word.toUpperCase();
+const correct = guess === target;
+const close = !correct && lev(guess, target) <= 2;
+const pts = Math.max(10, 100 - ((room.hints||[]).length * 15));
+
+const upd = {};
+upd[`guesses/${myId}`] = { word:guess, correct, close, at:Date.now() };
+upd.updatedAt = Date.now();
+
+if (correct) {
+upd[`scores/${myId}`] = ((room.scores?.[myId]) || 0) + pts;
+upd.roundWinner = myId;
+} else if (close) {
+toast(`Tout pres ! (${lev(guess,target)} lettre d'ecart)`,'if');
+playSound('miss');
+} else {
+toast('Ce n\'est pas ca...','er',1500);
+playSound('miss');
+}
+
+db.ref('lexis/'+roomCode).update(upd);
+});
+});
+}
+
+// === FIN (timer = 0) ===
+function handleEnd(room) {
+if (endHandled) return;
+endHandled = true; stopAllTimers();
+
+const scores = room.scores || {};
+const players = Object.values(room.players||{});
+let winnerId = null, maxPts = -1;
+players.forEach(p => { if ((scores[p.id]||0) > maxPts) { maxPts = scores[p.id]||0; winnerId = p.id; } });
+
+const eScores = document.getElementById('e-scores');
+eScores.innerHTML = '<div style="font-weight:bold;margin-bottom:10px;">Scores finaux :</div>';
+players.sort((a,b) => (scores[b.id]||0)-(scores[a.id]||0)).forEach(p => {
+const div = document.createElement('div');
+div.style.cssText = 'display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:14px;';
+div.innerHTML = `<span ${p.id===myId?'style="font-weight:bold;"':''}>${p.name}${p.id===myId?' (toi)':''}</span><span style="font-weight:bold;color:#4a0080;">${scores[p.id]||0} pts</span>`;
+eScores.appendChild(div);
+});
+
+document.getElementById('e-sub').textContent = winnerId===myId ? 'Bravo, tu as le plus de points !' : 'Bonne partie !';
+go('s-end');
+}
+
+// === REJOUER ===
+function replayFromEnd() {
+whenFB(() => {
+db.ref('lexis/'+roomCode).get().then(snap => {
+if (!snap.exists()) { goHome(); return; }
+const room = snap.val();
+if (room.hostId !== myId) { toast('L\'hote va relancer...','if'); return; }
+usedWords.clear();
+const wordObj = pickWord(room.category, room.difficulty);
+const scoreReset = {};
+Object.keys(room.players||{}).forEach(pid => { scoreReset[`scores/${pid}`] = 0; });
+db.ref('lexis/'+roomCode).update({
+status:'lobby', word:wordObj.w, meta:{cat:wordObj.c,hints:wordObj.h,def:wordObj.d},
+hints:[], guesses:{}, roundWinner:null, roundNum:1,
+startedAt:null, hintPushedAt:null, ...scoreReset
+}).then(() => { endHandled=false; roundHandled=false; prevRoundWinner=null; go('s-lobby'); });
+});
+});
+}
+
+// === GOD MODE ===
+function checkGodCode(val) {
+const msg = document.getElementById('god-msg');
+if (val.toUpperCase() === GOD_CODE) {
+godMode = true; msg.textContent = 'Mode Createur active !'; msg.className = 'god-msg ok';
+toast('MODE CREATEUR ACTIVE !','gd',3000);
+} else if (val.length >= GOD_CODE.length) {
+godMode = false; msg.textContent = 'Code incorrect.'; msg.className = 'god-msg er';
+document.getElementById('god-peek')?.classList.remove('on');
+} else {
+godMode = false; msg.className = 'god-msg';
+document.getElementById('god-peek')?.classList.remove('on');
+}
+}
+
+// === INIT DOM ===
+document.addEventListener('DOMContentLoaded', () => {
+setTimeout(() => document.getElementById('loader').classList.add('out'), 1000);
+updateHomeStats();
+document.getElementById('sound-chk').addEventListener('change', e => soundOn = e.target.checked);
+document.getElementById('god-inp').addEventListener('input', e => checkGodCode(e.target.value));
+
+const jc = document.getElementById('j-code');
+jc.addEventListener('input', () => { jc.value = jc.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+jc.addEventListener('keydown', e => { if (e.key==='Enter') joinGame(); });
+document.getElementById('c-name').addEventListener('keydown', e => { if (e.key==='Enter') createGame(); });
+document.getElementById('j-name').addEventListener('keydown', e => { if (e.key==='Enter') joinGame(); });
+
+const gInp = document.getElementById('g-inp');
+gInp.addEventListener('input', () => { gInp.value = gInp.value.toUpperCase(); });
+gInp.addEventListener('keydown', e => { if (e.key==='Enter') submitGuess(); });
+document.getElementById('g-send').addEventListener('click', submitGuess);
+});
+</script>
+
+</body>
+</html>
